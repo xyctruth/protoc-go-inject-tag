@@ -68,9 +68,45 @@ func injectTag(contents []byte, area textArea) (injected []byte) {
 	cti := newTagItems(area.CurrentTag)
 	iti := newTagItems(area.InjectTag)
 	ti := cti.override(iti)
+	ti = injectFormTag(ti)
 	expr = rInject.ReplaceAll(expr, []byte(fmt.Sprintf("`%s`", ti.format())))
 	injected = append(injected, contents[:area.Start-1]...)
 	injected = append(injected, expr...)
 	injected = append(injected, contents[area.End-1:]...)
 	return
+}
+
+func injectFormTag(tags tagItems) tagItems {
+	var name string
+	var isHasFormTag bool
+	for _, tag := range tags {
+		if tag.key == "protobuf" {
+			name = between(tag.value, "name=", ",")
+			continue
+		}
+		if tag.key == "form" {
+			isHasFormTag = true
+		}
+	}
+
+	if !isHasFormTag {
+		tags = append(tags, tagItem{
+			key:   "form",
+			value: fmt.Sprintf("\"%s\"", name),
+		})
+	}
+	return tags
+}
+
+func between(str, starting, ending string) string {
+	s := strings.Index(str, starting)
+	if s < 0 {
+		return ""
+	}
+	s += len(starting)
+	e := strings.Index(str[s:], ending)
+	if e < 0 {
+		return ""
+	}
+	return str[s : s+e]
 }
